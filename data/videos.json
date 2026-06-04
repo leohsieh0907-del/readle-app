@@ -1,0 +1,80 @@
+[
+  {
+    "id": "v001",
+    "youtubeId": "qp0HIF3SfI4",
+    "title": "How Great Leaders Inspire Action",
+    "titleZh": "偉大的領袖如何鼓動行為",
+    "durationSec": 1080,
+    "level": "B2",
+    "category": "business",
+    "thumbnail": "gradient-1",
+    "views": 0,
+    "keyWords": ["inspire", "assume", "achieve", "leader", "loyal"],
+    "subtitles": []
+  },
+  {
+    "id": "v002",
+    "youtubeId": "arj7oStGLkU",
+    "title": "Inside the Mind of a Master Procrastinator",
+    "titleZh": "拖延大師的腦中世界",
+    "durationSec": 838,
+    "level": "B1",
+    "category": "daily",
+    "thumbnail": "gradient-3",
+    "views": 0,
+    "keyWords": ["college", "major", "deadline", "panic", "rational"],
+    "subtitles": []
+  },
+  {
+    "id": "v003",
+    "youtubeId": "H14bBuluwB8",
+    "title": "Grit: The Power of Passion and Perseverance",
+    "titleZh": "恆毅力：熱情與毅力的力量",
+    "durationSec": 360,
+    "level": "B2",
+    "category": "business",
+    "thumbnail": "gradient-2",
+    "views": 0,
+    "keyWords": ["demanding", "perseverance", "passion", "predict", "talent"],
+    "subtitles": []
+  },
+  {
+    "id": "v004",
+    "youtubeId": "RcGyVTAoXEU",
+    "title": "How to Make Stress Your Friend",
+    "titleZh": "如何讓壓力成為你的朋友",
+    "durationSec": 870,
+    "level": "B2",
+    "category": "daily",
+    "thumbnail": "gradient-5",
+    "views": 0,
+    "keyWords": ["confession", "stress", "health", "harmful", "belief"],
+    "subtitles": []
+  },
+  {
+    "id": "v005",
+    "youtubeId": "5MgBikgcWnY",
+    "title": "The First 20 Hours — How to Learn Anything",
+    "titleZh": "最初的 20 小時——如何學會任何事",
+    "durationSec": 1200,
+    "level": "B1",
+    "category": "toeic",
+    "thumbnail": "gradient-4",
+    "views": 0,
+    "keyWords": ["practice", "skill", "frustrating", "barrier", "improve"],
+    "subtitles": []
+  },
+  {
+    "id": "v006",
+    "youtubeId": "Ks-_Mh1QhMc",
+    "title": "Your Body Language May Shape Who You Are",
+    "titleZh": "肢體語言塑造你自己",
+    "durationSec": 1260,
+    "level": "B2",
+    "category": "business",
+    "thumbnail": "gradient-1",
+    "views": 0,
+    "keyWords": ["posture", "powerful", "confident", "impression", "behavior"],
+    "subtitles": []
+  }
+]
