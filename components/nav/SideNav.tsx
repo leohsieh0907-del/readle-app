@@ -11,12 +11,14 @@ import {
   Settings,
   BookOpen,
   Captions,
+  FileText,
 } from 'lucide-react';
 
 const items = [
   { href: '/', label: '首頁', icon: Home },
   { href: '/learn/videos', label: '影片學習', icon: PlayCircle },
   { href: '/learn/videos/subtitle-gen', label: '字幕產生器', icon: Captions },
+  { href: '/learn/articles', label: '文章閱讀', icon: FileText },
   { href: '/learn/vocab', label: '單字本', icon: BookOpen },
   { href: '/ai', label: 'AI 助教', icon: Bot },
   { href: '/quiz', label: '測驗', icon: ClipboardCheck },
