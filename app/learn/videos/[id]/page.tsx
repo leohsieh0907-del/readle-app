@@ -49,7 +49,16 @@ export default function VideoPage({ params }: { params: Promise<{ id: string }> 
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1.0);
   const [duration, setDuration] = useState(video.durationSec);
-  const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>('both');
+  // 預設關閉浮層字幕（旁邊字幕面板已有中英對照）；要開自己切，且記住選擇
+  const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>('off');
+  useEffect(() => {
+    const saved = window.localStorage.getItem('readle.subtitle_mode') as SubtitleMode | null;
+    if (saved && ['both', 'en', 'zh', 'off'].includes(saved)) setSubtitleMode(saved);
+  }, []);
+  const changeSubtitleMode = (m: SubtitleMode) => {
+    setSubtitleMode(m);
+    window.localStorage.setItem('readle.subtitle_mode', m);
+  };
 
   // 字幕：先用 JSON 裡的，沒有就自動抓（含 YouTube 搜尋結果）
   const [subtitles, setSubtitles] = useState<SubtitleLine[]>(video.subtitles ?? []);
@@ -316,7 +325,7 @@ export default function VideoPage({ params }: { params: Promise<{ id: string }> 
             onTogglePlay={togglePlay}
             onSeek={seekTo}
             onSpeedChange={changeSpeed}
-            onSubtitleModeChange={setSubtitleMode}
+            onSubtitleModeChange={changeSubtitleMode}
             onABToggle={handleAB}
             onFollowReadToggle={() => setFollowRead((v) => !v)}
             onReplaySentence={replaySentence}
