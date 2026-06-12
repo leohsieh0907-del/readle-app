@@ -7,6 +7,7 @@
  */
 
 import type { NextRequest } from 'next/server';
+import { apiGuard } from '@/lib/api-guard';
 
 interface VideoResult {
   id: string;
@@ -123,6 +124,9 @@ async function translateTitles(videos: VideoResult[], key: string): Promise<Vide
 }
 
 export async function GET(req: NextRequest) {
+  const blocked = apiGuard(req);
+  if (blocked) return blocked;
+
   const q = req.nextUrl.searchParams.get('q')?.trim();
   if (!q || q.length < 2) return Response.json({ error: 'query too short' }, { status: 400 });
 

@@ -6,6 +6,7 @@ import { Download, Trash2, AlertTriangle } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import SoftButton from '@/components/ui/SoftButton';
 import ContentRefresher from '@/components/ContentRefresher';
+import VoiceSettings from '@/components/settings/VoiceSettings';
 import { userRepo, settingsRepo } from '@/lib/storage/repos';
 import { exportAll, clearAll } from '@/lib/storage/repo';
 import type { Settings, User } from '@/lib/readle-types';
@@ -189,6 +190,9 @@ export default function SettingsPage() {
           </div>
         </Field>
       </Section>
+
+      {/* 發音 */}
+      <VoiceSettings />
 
       {/* 資料 */}
       <Section title="資料">

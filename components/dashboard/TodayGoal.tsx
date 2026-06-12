@@ -29,11 +29,16 @@ export default function TodayGoal({ learnedMin, goalMin, streak }: TodayGoalProp
               <Target size={12} /> 今日目標
             </div>
             <div className="mt-1 text-xl font-bold">
-              {pct >= 100 ? '✅ 已完成！' : `差 ${goalMin - learnedMin} 分鐘`}
+              {pct >= 100
+                ? '✅ 已完成！'
+                : learnedMin === 0
+                  ? '點亮你的第一天 🔥'
+                  : `差 ${goalMin - learnedMin} 分鐘`}
             </div>
             <div className="mt-1.5 flex items-center gap-3 text-sm text-[var(--color-text-secondary)]">
               <span className="inline-flex items-center gap-1">
-                <Clock size={13} /> 連續 {streak} 天
+                <Clock size={13} />
+                {streak > 0 ? `連續 ${streak} 天` : '完成今日目標即開始連續紀錄'}
               </span>
             </div>
           </div>
