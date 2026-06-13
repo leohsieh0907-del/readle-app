@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import WordPopup from '@/components/video/WordPopup';
-import { translateToZh } from '@/lib/dictionary/lookup';
+import { quickTranslateZh } from '@/lib/dictionary/lookup';
 import { lookupBuiltin } from '@/lib/dictionary/builtin';
+import { unlockSpeech } from '@/lib/speech/tts';
 
 /**
  * 全站單字查詢
@@ -72,6 +73,17 @@ export default function GlobalWordLookup() {
   const moveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentWord = useRef<string>('');
 
+  // 首次點擊/觸碰解鎖手機/Safari 語音引擎
+  useEffect(() => {
+    const h = () => unlockSpeech();
+    document.addEventListener('click', h, { once: true });
+    document.addEventListener('touchstart', h, { once: true });
+    return () => {
+      document.removeEventListener('click', h);
+      document.removeEventListener('touchstart', h);
+    };
+  }, []);
+
   const clearTooltip = useCallback(() => {
     if (moveTimer.current) clearTimeout(moveTimer.current);
     setTooltip(null);
@@ -85,8 +97,8 @@ export default function GlobalWordLookup() {
     // 1. 內建字典（瞬間，不打 API）
     const builtin = lookupBuiltin(word);
     if (builtin?.zh) { zhCache[key] = builtin.zh; return builtin.zh; }
-    // 2. Gemini API（未知字）
-    const zh = await translateToZh(word, context);
+    // 2. Google 免費端點（未知字）— 快且穩定，~1.3s
+    const zh = await quickTranslateZh(word);
     if (zh) zhCache[key] = zh;
     return zh ?? '';
   }, []);
@@ -203,7 +215,7 @@ export default function GlobalWordLookup() {
               </span>
             ) : tooltip.zh}
           </div>
-          <div className="mt-1 text-[10px] text-white/40">單擊 / 雙擊查詳細</div>
+          <div className="mt-1 text-[10px] text-white/40">點一下看詳細 🔊</div>
         </div>
       )}
 
