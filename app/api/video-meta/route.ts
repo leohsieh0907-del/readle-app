@@ -5,8 +5,12 @@
  */
 
 import type { NextRequest } from 'next/server';
+import { apiGuard } from '@/lib/api-guard';
 
 export async function GET(req: NextRequest) {
+  const blocked = apiGuard(req);
+  if (blocked) return blocked;
+
   const videoId = req.nextUrl.searchParams.get('v');
   if (!videoId) return Response.json({ error: 'Missing ?v=' }, { status: 400 });
 
