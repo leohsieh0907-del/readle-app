@@ -14,7 +14,7 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: 'Happy English — AI 英文學習平台',
+  title: 'Readle — AI 英文學習平台',
   description: '影片雙字幕、AI 助教 Luna、單字記憶曲線。每天 10 分鐘的優雅習慣。',
 };
 

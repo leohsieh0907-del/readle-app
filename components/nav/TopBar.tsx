@@ -45,7 +45,7 @@ export default function TopBar() {
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#7C7CFF] to-[#5B5BF0] text-white shadow-card">
               <Sparkles size={16} strokeWidth={2.5} />
             </span>
-            <span className="text-[15px] font-bold tracking-tight">Happy English</span>
+            <span className="text-[15px] font-bold tracking-tight">Readle</span>
           </Link>
 
           {/* 桌面版搜尋框 */}

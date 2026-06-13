@@ -33,9 +33,6 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# 內部 git worktree（含 token，絕不可提交）
-.git-readle/
-
 # vercel
 .vercel
 
@@ -45,5 +42,5 @@ next-env.d.ts
 
 .vercel
 
-# Windows 保留裝置名，git 無法索引
-public/audio/con.mp3
+# internal git worktree
+.git-readle/

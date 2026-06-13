@@ -7,7 +7,6 @@ import MobileTabBar from '@/components/nav/MobileTabBar';
 import AITutor from '@/components/ai-tutor/AITutor';
 import Onboarding from '@/components/onboarding/Onboarding';
 import GlobalWordLookup from '@/components/GlobalWordLookup';
-import Toaster from '@/components/ui/Toaster';
 import { hasOnboarded } from '@/lib/storage/repos';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -29,7 +28,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <MobileTabBar />
       <AITutor />
       <GlobalWordLookup />
-      <Toaster />
       {mounted && needOnboarding && (
         <Onboarding onDone={() => setNeedOnboarding(false)} />
       )}

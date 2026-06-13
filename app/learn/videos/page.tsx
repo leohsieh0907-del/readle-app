@@ -2,11 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Play, Eye, Filter, Search, Loader2, Sparkles, Tv2, Clock, X, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Play, Eye, Filter, Search, Loader2, Sparkles, Tv2, Clock, X } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import { seedVideos } from '@/lib/mock/seed-videos';
-import { getSavedVideoIds, toggleSaveVideo } from '@/lib/storage/video-actions';
-import { toast } from '@/lib/toast';
 import type { Category, CEFR } from '@/lib/readle-types';
 
 const gradients: Record<string, string> = {
@@ -49,16 +47,6 @@ export default function VideosPage() {
   const [searchErr, setSearchErr] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
-  const [savedVideos, setSavedVideos] = useState<string[]>([]);
-
-  useEffect(() => { setSavedVideos(getSavedVideoIds()); }, []);
-  const handleToggleSaveVideo = (e: React.MouseEvent, id: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const saved = toggleSaveVideo(id);
-    setSavedVideos(getSavedVideoIds());
-    toast(saved ? '已加入收藏 🔖' : '已取消收藏');
-  };
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -336,7 +324,7 @@ export default function VideosPage() {
                 這個分類還沒有影片
               </GlassCard>
             ) : filtered.map(v => (
-              <Link key={v.id} href={`/learn/videos/${v.id}`} className="group" data-no-lookup>
+              <Link key={v.id} href={`/learn/videos/${v.id}`} className="group">
                 <GlassCard className="h-full overflow-hidden p-0 transition group-hover:shadow-hover">
                   <div className={`relative flex aspect-video items-center justify-center bg-gradient-to-br ${gradients[v.thumbnail] ?? gradients['gradient-1']}`}>
                     <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/30 backdrop-blur-md transition group-hover:scale-110">
@@ -347,14 +335,6 @@ export default function VideosPage() {
                       <span className="rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-bold uppercase text-[#5B5BF0]">{v.level}</span>
                       <span className="rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-bold uppercase text-[#5B5BF0]">{catLabel[v.category]}</span>
                     </div>
-                    {/* 收藏 */}
-                    <button type="button" onClick={e => handleToggleSaveVideo(e, v.id)}
-                      className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-sm transition hover:scale-110 ${
-                        savedVideos.includes(v.id) ? 'bg-[#FFB84D] text-white shadow-card' : 'bg-black/30 text-white hover:bg-[#FFB84D]'
-                      }`}
-                      title={savedVideos.includes(v.id) ? '取消收藏' : '收藏影片'}>
-                      {savedVideos.includes(v.id) ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
-                    </button>
                   </div>
                   <div className="p-4">
                     <h3 className="font-bold leading-snug line-clamp-2">{v.title}</h3>

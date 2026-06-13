@@ -2,16 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Sparkles, Send, Mic, X, Plus, Volume2, VolumeX, MicOff, Phone, PhoneOff } from 'lucide-react';
+import { Bot, Sparkles, Send, Mic, X, Plus, Volume2, VolumeX, MicOff } from 'lucide-react';
 import { getGreeting, getMockReply } from './mock-replies';
 import { getProvider } from '@/lib/ai';
 import { lunaTutorPrompt } from '@/lib/ai/prompts';
 import { bumpQuota } from '@/lib/ai/provider';
-import { speak, speakNatural, stopSpeaking } from '@/lib/speech/tts';
+import { speak, stopSpeaking } from '@/lib/speech/tts';
 import { extractEnglish, hasEnglish } from '@/lib/speech/extract';
 import { settingsRepo } from '@/lib/storage/repos';
 import { isRecognitionAvailable, recognize } from '@/lib/speech/score';
-import LunaFace from './LunaFace';
 
 interface Message {
   id: string;
@@ -26,7 +25,6 @@ function uid() {
 }
 
 type MicState = 'idle' | 'listening' | 'processing';
-type CallPhase = 'listening' | 'thinking' | 'speaking';
 
 export default function AITutor() {
   const [open, setOpen] = useState(false);
@@ -36,35 +34,6 @@ export default function AITutor() {
   const [micState, setMicState] = useState<MicState>('idle');
   const [autoTTS, setAutoTTS] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // 語音通話模式（雙向對話）
-  const [callMode, setCallMode] = useState(false);
-  const [callPhase, setCallPhase] = useState<CallPhase>('listening');
-  const [callHeard, setCallHeard] = useState('');     // 最近聽到的使用者語句
-  const [callReply, setCallReply] = useState('');      // Luna 最近的回覆
-  const callRef = useRef(false);                       // 控制迴圈是否繼續
-  const messagesRef = useRef<Message[]>([]);
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
-
-  // Luna 語音速度（母語自然發音，可調速）
-  const SPEEDS = [0.7, 0.85, 1.0, 1.15, 1.3];
-  const [speed, setSpeed] = useState(1.0);
-  const speedRef = useRef(1.0);
-  useEffect(() => {
-    const saved = typeof window !== 'undefined' ? Number(localStorage.getItem('readle.luna_speed')) : NaN;
-    if (SPEEDS.includes(saved)) { setSpeed(saved); speedRef.current = saved; }
-  }, []);
-  const changeSpeed = (delta: 1 | -1) => {
-    const idx = SPEEDS.indexOf(speed);
-    const next = SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, idx + delta))];
-    setSpeed(next);
-    speedRef.current = next;
-    if (typeof window !== 'undefined') localStorage.setItem('readle.luna_speed', String(next));
-  };
-  const speakLuna = (text: string) => speakNatural({ text, rate: speedRef.current });
-
-  // 元件卸載時，停止通話迴圈與發音（避免背景持續錄音/播放）
-  useEffect(() => () => { callRef.current = false; stopSpeaking(); }, []);
 
   // 載入 autoTTS 設定
   useEffect(() => {
@@ -141,108 +110,6 @@ export default function AITutor() {
     } finally {
       setMicState('idle');
       setInput('');
-    }
-  };
-
-  // ─── 語音通話模式：聽 → 想 → 說 → 自動再聽 ────────────────
-  const startCall = () => {
-    if (callRef.current) return;
-    if (!isRecognitionAvailable()) {
-      alert('你的瀏覽器不支援語音辨識，請使用 Chrome 或 Edge');
-      return;
-    }
-    stopSpeaking();
-    callRef.current = true;
-    setCallMode(true);
-    setCallHeard('');
-    setCallReply('');
-    bumpQuota();
-    runCallLoop();
-  };
-
-  const endCall = () => {
-    callRef.current = false;
-    setCallMode(false);
-    stopSpeaking();
-  };
-
-  /** 取得 Luna 回覆（通話模式：簡短口語） */
-  const askLuna = async (userText: string): Promise<string> => {
-    const provider = getProvider();
-    const history = [
-      ...messagesRef.current
-        .filter((m) => !m.streaming)
-        .map((m) => ({ role: m.role, content: m.content })),
-      { role: 'user' as const, content: userText },
-    ];
-    const systemPrompt =
-      lunaTutorPrompt() +
-      `\n\n[語音對話模式 — 嚴格規則]
-你正在跟學生「講電話」。回覆必須：
-1. 極短：1 句英文，最多 20 個字。
-2. 純對話，像朋友聊天，結尾常帶一個簡短問句延續對話。
-3. 絕對不要：列點、星號、編號、中文翻譯、長篇解釋、給選項清單。
-範例好回覆：「That sounds great! What did you eat?」
-範例壞回覆：列出一堆句型或解釋文法。
-保持自然、簡短、口語。`;
-    try {
-      const res = await provider.chat({ messages: history, systemPrompt });
-      return res.content;
-    } catch {
-      return "Sorry, I didn't catch that. Could you say it again?";
-    }
-  };
-
-  const runCallLoop = async () => {
-    // 開場白
-    if (callRef.current) {
-      const opener = "Hi! I'm Luna. What would you like to talk about today?";
-      setCallReply(opener);
-      setCallPhase('speaking');
-      setMessages((prev) => [...prev, { id: uid(), role: 'assistant', content: opener }]);
-      await speakLuna(opener);
-    }
-
-    while (callRef.current) {
-      // 1. 聽
-      setCallPhase('listening');
-      setCallHeard('');
-      let transcript = '';
-      try {
-        const r = await recognize({ lang: 'en-US', timeoutMs: 12000 });
-        transcript = r.transcript.trim();
-      } catch (e) {
-        // 麥克風被拒 → 結束通話，不要無限重試
-        const msg = e instanceof Error ? e.message : '';
-        if (/not-allowed|denied|service-not-allowed/i.test(msg)) {
-          alert('需要麥克風權限才能語音通話，請在瀏覽器允許後再試');
-          endCall();
-          break;
-        }
-      }
-      if (!callRef.current) break;
-      if (!transcript) {
-        await new Promise((r) => setTimeout(r, 600)); // 避免空轉，喘口氣再聽
-        continue;
-      }
-
-      setCallHeard(transcript);
-      setMessages((prev) => [...prev, { id: uid(), role: 'user', content: transcript }]);
-
-      // 2. 想
-      setCallPhase('thinking');
-      const reply = await askLuna(transcript);
-      if (!callRef.current) break;
-      setCallReply(reply);
-      setMessages((prev) => [...prev, { id: uid(), role: 'assistant', content: reply }]);
-
-      // 3. 說（唸完才換使用者）
-      setCallPhase('speaking');
-      const en = extractEnglish(reply);
-      await speakLuna(en.length >= 3 ? en : reply);
-      if (!callRef.current) break;
-
-      await new Promise((r) => setTimeout(r, 350));
     }
   };
 
@@ -365,34 +232,6 @@ export default function AITutor() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  {/* 語速（點擊循環，所有發音共用）*/}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const idx = SPEEDS.indexOf(speedRef.current);
-                      const next = SPEEDS[(idx + 1) % SPEEDS.length];
-                      setSpeed(next);
-                      speedRef.current = next;
-                      localStorage.setItem('readle.luna_speed', String(next));
-                    }}
-                    className="rounded-full bg-black/[0.05] px-2.5 py-1.5 font-mono text-xs font-bold text-[var(--color-text-secondary)] transition hover:bg-[#5B5BF0]/15 hover:text-[#5B5BF0]"
-                    title="語速（點擊切換，發音和通話都適用）"
-                  >
-                    {speed.toFixed(2).replace(/0$/, '')}x
-                  </button>
-                  {/* 語音通話模式 */}
-                  <button
-                    type="button"
-                    onClick={callMode ? endCall : startCall}
-                    className={`rounded-full p-2 transition ${
-                      callMode
-                        ? 'bg-[#EF4444] text-white'
-                        : 'bg-[#4ADE80]/15 text-[#15803d] hover:bg-[#4ADE80]/25'
-                    }`}
-                    title={callMode ? '結束通話' : '語音通話（跟 Luna 用講的對話）'}
-                  >
-                    {callMode ? <PhoneOff size={16} /> : <Phone size={16} />}
-                  </button>
                   <button
                     type="button"
                     onClick={toggleAutoTTS}
@@ -407,28 +246,13 @@ export default function AITutor() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { endCall(); setOpen(false); }}
+                    onClick={() => setOpen(false)}
                     className="rounded-full p-2 text-[var(--color-text-secondary)] hover:bg-black/5"
                   >
                     <X size={18} />
                   </button>
                 </div>
               </header>
-
-              {/* 語音通話覆蓋層 */}
-              <AnimatePresence>
-                {callMode && (
-                  <CallOverlay
-                    phase={callPhase}
-                    heard={callHeard}
-                    reply={callReply}
-                    onHangup={endCall}
-                    speed={speed}
-                    onSlower={() => changeSpeed(-1)}
-                    onFaster={() => changeSpeed(1)}
-                  />
-                )}
-              </AnimatePresence>
 
               {/* Messages */}
               <div
@@ -441,7 +265,6 @@ export default function AITutor() {
                     message={m}
                     onQuickReply={(t) => send(t)}
                     onSpeak={() => speakSmart(m.content)}
-                    rate={speed}
                   />
                 ))}
               </div>
@@ -516,124 +339,19 @@ export default function AITutor() {
   );
 }
 
-function CallOverlay({
-  phase,
-  heard,
-  reply,
-  onHangup,
-  speed,
-  onSlower,
-  onFaster,
-}: {
-  phase: CallPhase;
-  heard: string;
-  reply: string;
-  onHangup: () => void;
-  speed: number;
-  onSlower: () => void;
-  onFaster: () => void;
-}) {
-  const cfg = {
-    listening: { label: '聆聽中…請說話', sub: '用英文跟 Luna 說說看', color: '#EF4444', ring: 'bg-[#EF4444]' },
-    thinking: { label: 'Luna 思考中…', sub: '正在組織回覆', color: '#F59E0B', ring: 'bg-[#F59E0B]' },
-    speaking: { label: 'Luna 說話中…', sub: '仔細聽她怎麼說', color: '#5B5BF0', ring: 'bg-[#5B5BF0]' },
-  }[phase];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="absolute inset-0 z-10 flex flex-col items-center justify-between bg-white px-6 py-10"
-    >
-      {/* 標題 + 語音模式開關 */}
-      <div className="flex flex-col items-center gap-3">
-        <div className="text-center">
-          <div className="text-sm font-bold text-[var(--color-text-secondary)]">語音通話中</div>
-          <div className="mt-1 text-xs text-[var(--color-text-tertiary)]">跟 Luna 用講的對話 · 全程免打字</div>
-        </div>
-        {/* 語速調節 */}
-        <div className="flex items-center gap-2 rounded-full bg-[#F5F5FA] px-2 py-1 ring-1 ring-inset ring-black/8">
-          <span className="pl-1 text-xs text-[var(--color-text-tertiary)]">語速</span>
-          <button type="button" onClick={onSlower} disabled={speed <= 0.7}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-secondary)] hover:bg-black/5 disabled:opacity-30"
-            title="放慢">
-            🐢
-          </button>
-          <span className="min-w-[44px] text-center font-mono text-sm font-bold text-[#5B5BF0]">{speed.toFixed(2)}x</span>
-          <button type="button" onClick={onFaster} disabled={speed >= 1.3}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-secondary)] hover:bg-black/5 disabled:opacity-30"
-            title="加快">
-            🐇
-          </button>
-        </div>
-      </div>
-
-      {/* 中央動畫球 */}
-      <div className="flex flex-col items-center gap-6">
-        <div className="relative flex h-44 w-44 items-center justify-center">
-          {/* 外圈脈動 */}
-          {(phase === 'listening' || phase === 'speaking') && (
-            <>
-              <span className={`absolute inline-flex h-40 w-40 animate-ping rounded-full ${cfg.ring} opacity-15`} />
-              <span className={`absolute inline-flex h-32 w-32 animate-ping rounded-full ${cfg.ring} opacity-20`} style={{ animationDelay: '0.4s' }} />
-            </>
-          )}
-          {/* Luna 人像（會動嘴型、眨眼，看口型學發音） */}
-          <div className="relative z-10 drop-shadow-[0_8px_24px_rgba(91,91,240,0.4)]">
-            <LunaFace phase={phase} text={reply} rate={speed} size={172} />
-          </div>
-        </div>
-
-        <div className="text-center">
-          <div className="text-lg font-bold" style={{ color: cfg.color }}>{cfg.label}</div>
-          <div className="mt-1 text-xs text-[var(--color-text-tertiary)]">{cfg.sub}</div>
-        </div>
-
-        {/* 最近對話 */}
-        <div className="min-h-[60px] w-full max-w-[300px] space-y-2 text-center">
-          {heard && (
-            <div className="rounded-2xl bg-[#5B5BF0]/10 px-3 py-2 text-sm text-[#5B5BF0]">
-              你：{heard}
-            </div>
-          )}
-          {reply && phase !== 'thinking' && (
-            <div className="rounded-2xl bg-[#F5F5FA] px-3 py-2 text-sm text-[var(--color-text-primary)] ring-1 ring-inset ring-black/5">
-              {reply}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 掛斷 */}
-      <button
-        type="button"
-        onClick={onHangup}
-        className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EF4444] text-white shadow-hover transition hover:scale-105"
-        title="結束通話"
-      >
-        <PhoneOff size={26} />
-      </button>
-    </motion.div>
-  );
-}
-
 function MessageBubble({
   message,
   onQuickReply,
   onSpeak,
-  rate = 1.0,
 }: {
   message: Message;
   onQuickReply: (text: string) => void;
   onSpeak: () => void;
-  rate?: number;
 }) {
   const isUser = message.role === 'user';
   const [playing, setPlaying] = useState(false);
-  const [activeSeg, setActiveSeg] = useState<number>(-1);
 
-  // 抽出英文部分，走全站語音模組（Edge 神經語音）
+  // 抽出英文部分，用 Gemini TTS 朗讀（真人聲音）
   const handleSpeak = async () => {
     if (playing) {
       stopSpeaking();
@@ -643,52 +361,26 @@ function MessageBubble({
     const enText = extractEnglish(message.content);
     if (!enText || enText.length < 3) return;
     setPlaying(true);
-    await speakNatural({ text: enText, rate });
+    try {
+      // 優先用後端 Gemini TTS
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: enText }),
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.onended = () => { setPlaying(false); URL.revokeObjectURL(url); };
+        audio.onerror = () => { setPlaying(false); speak({ text: enText }); };
+        await audio.play();
+        return;
+      }
+    } catch { /* fall through */ }
+    // 後備：Web Speech API
+    speak({ text: enText });
     setPlaying(false);
-  };
-
-  // 逐句發音：點訊息裡的英文句子，用目前語速唸那句
-  const speakSegment = async (text: string, idx: number) => {
-    stopSpeaking();
-    setPlaying(false);
-    setActiveSeg(idx);
-    await speakNatural({ text, rate });
-    setActiveSeg((cur) => (cur === idx ? -1 : cur));
-  };
-
-  // 把英文句子片段變成可點擊（中文與短字維持純文字）
-  const renderClickable = (content: string) => {
-    const re = /[A-Za-z][^一-鿿぀-ヿ\n]*[A-Za-z0-9.!?'"”)]/g;
-    const out: React.ReactNode[] = [];
-    let last = 0;
-    let m: RegExpExecArray | null;
-    let segIdx = 0;
-    while ((m = re.exec(content)) !== null) {
-      const seg = m[0];
-      // 句子才可點：要有空格且長度 ≥ 8（過濾單字、選項標號）
-      if (!seg.includes(' ') || seg.length < 8) continue;
-      if (m.index > last) out.push(content.slice(last, m.index));
-      const idx = segIdx++;
-      const active = activeSeg === idx;
-      out.push(
-        <span
-          key={`seg-${idx}`}
-          onClick={(e) => { e.stopPropagation(); speakSegment(seg, idx); }}
-          title="點我聽這句 🔊"
-          className={`cursor-pointer rounded px-0.5 underline decoration-dotted underline-offset-[3px] transition ${
-            active
-              ? 'bg-[#5B5BF0]/15 text-[#5B5BF0] decoration-[#5B5BF0]'
-              : 'decoration-[#5B5BF0]/40 hover:bg-[#5B5BF0]/10 hover:text-[#5B5BF0]'
-          }`}
-        >
-          {seg}
-        </span>,
-      );
-      last = m.index + seg.length;
-    }
-    if (out.length === 0) return content;
-    if (last < content.length) out.push(content.slice(last));
-    return out;
   };
 
   const canSpeak = !isUser && !message.streaming && hasEnglish(message.content);
@@ -712,7 +404,7 @@ function MessageBubble({
               : 'bg-[#F5F5FA] text-[var(--color-text-primary)] ring-1 ring-inset ring-black/8'
           }`}
         >
-          {isUser || message.streaming ? message.content : renderClickable(message.content)}
+          {message.content}
           {message.streaming && (
             <span className="ml-0.5 inline-block h-3 w-1 animate-pulse bg-current align-middle" />
           )}
