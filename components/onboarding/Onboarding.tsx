@@ -74,7 +74,7 @@ export default function Onboarding({ onDone }: OnboardingProps) {
 
   const steps = [
     {
-      title: '歡迎來到 Readle 👋',
+      title: '歡迎來到 Happy English 👋',
       subtitle: '先告訴我們你的暱稱和頭像',
       content: (
         <div className="space-y-6">

@@ -6,6 +6,7 @@ import { Download, Trash2, AlertTriangle } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import SoftButton from '@/components/ui/SoftButton';
 import ContentRefresher from '@/components/ContentRefresher';
+import VoiceSettings from '@/components/settings/VoiceSettings';
 import { userRepo, settingsRepo } from '@/lib/storage/repos';
 import { exportAll, clearAll } from '@/lib/storage/repo';
 import type { Settings, User } from '@/lib/readle-types';
@@ -190,6 +191,9 @@ export default function SettingsPage() {
         </Field>
       </Section>
 
+      {/* 發音 */}
+      <VoiceSettings />
+
       {/* 資料 */}
       <Section title="資料">
         <ContentRefresher />
@@ -229,7 +233,7 @@ export default function SettingsPage() {
       </Section>
 
       <GlassCard className="p-5 text-center text-xs text-[var(--color-text-tertiary)]">
-        Readle v0.3.0 · Phase 3 · 你的資料儲存在本機，不會上傳
+        Happy English v0.3.0 · 你的資料儲存在本機，不會上傳
       </GlassCard>
     </div>
   );

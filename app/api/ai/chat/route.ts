@@ -7,6 +7,7 @@
  */
 
 import type { NextRequest } from 'next/server';
+import { apiGuard } from '@/lib/api-guard';
 
 interface GeminiMessage {
   role: 'user' | 'model';
@@ -48,6 +49,9 @@ function toGemini(msgs: ChatBody['messages']): {
 }
 
 export async function POST(req: NextRequest) {
+  const blocked = apiGuard(req);
+  if (blocked) return blocked;
+
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
     return new Response(

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Volume2, Plus, BookOpen, Check, RefreshCw } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import type { VocabEntry } from '@/lib/readle-types';
 import { addWord, findWord } from '@/lib/storage/vocab-actions';
 import { vocabRepo } from '@/lib/storage/repos';
+import { speak, prefetchAll } from '@/lib/speech/tts';
 
 interface TodayWordsProps {
   words: VocabEntry[];
@@ -93,21 +94,18 @@ export default function TodayWords({ words: initialWords }: TodayWordsProps) {
 
   const words = displayWords;
 
-  const speak = (text: string) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'en-US';
-    u.rate = 0.95;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  };
+  // 預先快取畫面上的單字 + 例句音檔（背景，第一次點就瞬間）
+  useEffect(() => {
+    const texts = displayWords.flatMap(w => [w.word, ...(w.examples[0] ? [w.examples[0].en] : [])]);
+    prefetchAll(texts);
+  }, [displayWords]);
 
   return (
     <section>
       <div className="mb-3 flex items-end justify-between px-1">
         <div>
           <h2 className="text-lg font-bold tracking-tight">今日單字</h2>
-          <p className="text-xs text-[var(--color-text-tertiary)]">點卡片翻面 · 點 🔊 聽發音</p>
+          <p className="text-xs text-[var(--color-text-tertiary)]">← 左右滑動看更多 · 點卡片翻面 · 點 🔊 聽發音</p>
         </div>
         <button
           type="button"
@@ -120,6 +118,7 @@ export default function TodayWords({ words: initialWords }: TodayWordsProps) {
         </button>
       </div>
 
+      <div className="relative">
       <div className="no-scrollbar flex gap-3 overflow-x-auto px-1 pb-2">
         {words.map((w) => {
           const isFlip = !!flipped[w.id];
@@ -162,7 +161,7 @@ export default function TodayWords({ words: initialWords }: TodayWordsProps) {
                       tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
-                        speak(w.word);
+                        speak({ text: w.word });
                       }}
                       className="rounded-full p-1.5 text-[var(--color-text-tertiary)] hover:bg-black/5"
                     >
@@ -186,8 +185,21 @@ export default function TodayWords({ words: initialWords }: TodayWordsProps) {
                   <div className="text-[15px] font-bold leading-snug">{w.meaning}</div>
                   {w.examples[0] && (
                     <div className="mt-3 space-y-0.5 text-xs">
-                      <div className="leading-snug text-[var(--color-text-primary)]">
-                        {w.examples[0].en}
+                      <div className="flex items-start gap-1.5">
+                        <span className="flex-1 leading-snug text-[var(--color-text-primary)]">
+                          {w.examples[0].en}
+                        </span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            speak({ text: w.examples[0].en });
+                          }}
+                          className="shrink-0 rounded-full p-1 text-[var(--color-text-tertiary)] hover:bg-black/5 hover:text-[#5B5BF0]"
+                        >
+                          <Volume2 size={13} />
+                        </span>
                       </div>
                       <div className="leading-snug text-[var(--color-text-tertiary)]">
                         {w.examples[0].zh}
@@ -200,6 +212,13 @@ export default function TodayWords({ words: initialWords }: TodayWordsProps) {
             </motion.div>
           );
         })}
+      </div>
+        {/* 右側漸層淡出 + 箭頭，明示可橫滑 */}
+        {words.length > 2 && (
+          <div className="pointer-events-none absolute right-0 top-0 bottom-2 flex w-14 items-center justify-end bg-gradient-to-l from-[#FAFAFC] to-transparent pr-1">
+            <span className="text-lg text-[#5B5BF0]/60">›</span>
+          </div>
+        )}
       </div>
     </section>
   );
