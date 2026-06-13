@@ -1,14 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Volume2, Plus, Check, Loader2 } from 'lucide-react';
 import { speak } from '@/lib/speech/tts';
 import { addWord, findWord } from '@/lib/storage/vocab-actions';
 import { lookupOnline, translateToZh, type DictResult } from '@/lib/dictionary/lookup';
 import { lookupBuiltin } from '@/lib/dictionary/builtin';
-import { getCachedExamples, setCachedExamples } from '@/lib/dictionary/example-cache';
-import { toast } from '@/lib/toast';
 
 interface WordPopupProps {
   word: string;
@@ -84,31 +82,53 @@ export default function WordPopup({ word, context, meaning, phonetic, videoId, o
     existing?.examples.slice(0, 2).map(e => ({ en: e.en, zh: e.zh })) ?? []
   );
   const [exLoading, setExLoading] = useState(false);
-  const [exError, setExError] = useState(false);
   const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const displayPhonetic = phonetic ?? local?.phonetic ?? builtin?.phonetic ?? online?.phonetic ?? '';
   const displayPos = local?.pos ?? builtin?.pos ?? online?.partOfSpeech ?? '';
 
-  /** 唸單字發音（即時本地語音，零延遲） */
+  /** 唸單字發音 */
   const pronounce = () => {
+    if (online?.audioUrl) {
+      try {
+        if (!audioRef.current) audioRef.current = new Audio(online.audioUrl);
+        else audioRef.current.src = online.audioUrl;
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => speak({ text: cleaned }));
+        return;
+      } catch { /* fall through */ }
+    }
     speak({ text: cleaned });
   };
 
-  /** 唸例句（即時 Web Speech，本地語音零延遲） */
-  const speakExample = (text: string, idx: number) => {
+  /** 唸例句（後端 Gemini TTS） */
+  const speakExample = async (text: string, idx: number) => {
     setSpeakingIdx(idx);
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.onended = () => { setSpeakingIdx(null); URL.revokeObjectURL(url); };
+        audio.onerror = () => { setSpeakingIdx(null); speak({ text }); };
+        await audio.play();
+        return;
+      }
+    } catch { /* fall through */ }
     speak({ text });
-    // 估算唸完時間，重置 icon 狀態
-    const ms = Math.max(1200, text.split(/\s+/).length * 380);
-    window.setTimeout(() => setSpeakingIdx(null), ms);
+    setSpeakingIdx(null);
   };
 
   /** 用 Gemini 生成 2 個例句 */
   const generateExamples = async (w: string, cancelled: () => boolean) => {
     if (examples.length >= 2) return;
     setExLoading(true);
-    setExError(false);
     try {
       const prompt = `為英文單字「${w}」生成 2 個自然例句，附上繁體中文翻譯。
 回傳 JSON 陣列：[{"en":"Example sentence 1.","zh":"中文翻譯"},{"en":"Example sentence 2.","zh":"中文翻譯"}]
@@ -119,52 +139,43 @@ export default function WordPopup({ word, context, meaning, phonetic, videoId, o
         body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], temperature: 0.5, maxTokens: 400, jsonMode: true }),
       });
       if (cancelled()) return;
-      if (!res.ok) throw new Error('ai unavailable');
       const data = await res.json() as { content?: string };
-      const text = (data.content ?? '').trim();
-      const jsonText = text.match(/\[[\s\S]*\]/)?.[0] ?? text;
-      const parsed = JSON.parse(jsonText || '[]') as ExampleSentence[];
+      const parsed = JSON.parse(data.content ?? '[]') as ExampleSentence[];
       if (!cancelled() && Array.isArray(parsed) && parsed.length > 0) {
-        const slim = parsed.slice(0, 2);
-        setExamples(slim);
-        setCachedExamples(w, slim); // 寫入快取 → 下次查同字免打 API
-      } else if (examples.length === 0) {
-        setExError(true);
+        setExamples(parsed.slice(0, 2));
       }
-    } catch {
-      if (!cancelled() && examples.length === 0) setExError(true);
-    }
+    } catch { /* ignore */ }
     if (!cancelled()) setExLoading(false);
   };
-
-  const retryExamples = () => { void generateExamples(cleaned, () => false); };
 
   // 打開時：查線上字典 + AI 翻中文 + 生成例句 + 自動唸發音
   useEffect(() => {
     let isCancelled = false;
     const cancelled = () => isCancelled;
 
-    // 開窗瞬間用本地語音發音（零延遲，不等網路）
-    speak({ text: cleaned });
-    const t = 0;
-
-    // 1) 例句快取命中 → 直接用，完全不打 API
-    const cachedEx = getCachedExamples(cleaned);
-    if (cachedEx) setExamples(cachedEx);
+    const t = setTimeout(() => speak({ text: cleaned }), 250);
 
     (async () => {
-      // 查線上字典（音標 + 可能的英文例句當墊檔）
+      // 1. 查線上字典
       const result = await lookupOnline(cleaned);
       if (isCancelled) return;
       if (result) {
         setOnline(result);
-        if (result.example && !cachedEx && examples.length === 0) {
-          setExamples([{ en: result.example, zh: '' }]); // 字典例句先墊著（Gemini 掛掉時的降級）
+        if (result.audioUrl) {
+          try {
+            const a = new Audio(result.audioUrl);
+            audioRef.current = a;
+            setTimeout(() => a.play().catch(() => {}), 650);
+          } catch { /* ignore */ }
+        }
+        // 如果字典有例句，用它補充
+        if (result.example && examples.length === 0) {
+          setExamples([{ en: result.example, zh: '' }]);
         }
       }
       setLoading(false);
 
-      // 補中文釋義
+      // 2. 補中文
       if (!zhMeaning) {
         setTranslating(true);
         const zh = await translateToZh(cleaned, context);
@@ -172,8 +183,8 @@ export default function WordPopup({ word, context, meaning, phonetic, videoId, o
         if (!isCancelled) setTranslating(false);
       }
 
-      // 2) 快取沒有 → 才呼叫 Gemini 生成（成功後寫入快取；失敗/429 → 友善訊息）
-      if (!cachedEx) await generateExamples(cleaned, cancelled);
+      // 3. 生成 2 個 AI 例句
+      await generateExamples(cleaned, cancelled);
     })();
 
     return () => {
@@ -194,7 +205,6 @@ export default function WordPopup({ word, context, meaning, phonetic, videoId, o
       source: 'video',
     });
     setAdded(true);
-    toast('已加入單字本 📖');
   };
 
   return (
@@ -280,16 +290,7 @@ export default function WordPopup({ word, context, meaning, phonetic, videoId, o
               )}
             </div>
             <div className="space-y-2">
-              {examples.length === 0 && !exLoading && exError && (
-                <div className="flex items-center justify-between gap-2 rounded-xl bg-white/50 p-3 text-xs text-[var(--color-text-tertiary)] ring-1 ring-inset ring-black/5">
-                  <span>AI 例句暫時忙碌（配額繁忙）</span>
-                  <button type="button" onClick={retryExamples}
-                    className="shrink-0 rounded-lg bg-[#5B5BF0]/10 px-2.5 py-1 font-medium text-[#5B5BF0] hover:bg-[#5B5BF0]/20">
-                    重試
-                  </button>
-                </div>
-              )}
-              {examples.length === 0 && !exLoading && !exError && (
+              {examples.length === 0 && !exLoading && (
                 <div className="rounded-xl bg-white/50 p-3 text-xs text-[var(--color-text-tertiary)] ring-1 ring-inset ring-black/5">
                   載入中…
                 </div>

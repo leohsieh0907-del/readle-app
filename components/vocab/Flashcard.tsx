@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState } from 'react';
 import { Volume2 } from 'lucide-react';
-import { speak, prefetchAll } from '@/lib/speech/tts';
+import { speak } from '@/lib/speech/tts';
 import type { VocabEntry } from '@/lib/readle-types';
 
 const catColor: Record<string, string> = {
@@ -28,10 +28,6 @@ interface FlashcardProps {
 }
 
 export default function Flashcard({ word, flipped, onFlip }: FlashcardProps) {
-  useEffect(() => {
-    prefetchAll([word.word, ...(word.examples[0] ? [word.examples[0].en] : [])]);
-  }, [word]);
-
   return (
     <div
       role="button"
@@ -112,17 +108,7 @@ export default function Flashcard({ word, flipped, onFlip }: FlashcardProps) {
               <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
                 例句
               </div>
-              <div className="flex items-start gap-2">
-                <span className="flex-1 text-sm leading-snug">{word.examples[0].en}</span>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); speak({ text: word.examples[0].en }); }}
-                  className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-[#5B5BF0]/10 text-[#5B5BF0] hover:bg-[#5B5BF0]/20"
-                  title="聽例句"
-                >
-                  <Volume2 size={13} />
-                </button>
-              </div>
+              <div className="text-sm leading-snug">{word.examples[0].en}</div>
               {word.examples[0].zh && (
                 <div className="text-xs leading-snug text-[var(--color-text-tertiary)]">
                   {word.examples[0].zh}

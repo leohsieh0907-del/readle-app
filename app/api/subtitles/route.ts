@@ -10,7 +10,6 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { apiGuard } from '@/lib/api-guard';
 
 interface SubLine { startSec: number; endSec: number; en: string; zh: string }
 interface WordNote { word: string; zh: string; pos: string }
@@ -215,9 +214,6 @@ async function extractKeyWords(subtitles: SubLine[], key: string): Promise<WordN
 // ─── Main ──────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
-  const blocked = apiGuard(req);
-  if (blocked) return blocked;
-
   const videoId = req.nextUrl.searchParams.get('v');
   const withExplain = req.nextUrl.searchParams.get('explain') === '1';
   const videoTitle = req.nextUrl.searchParams.get('title') ?? ''; // 從搜尋結果帶入標題
