@@ -14,7 +14,7 @@ import type { VocabEntry } from '@/lib/readle-types';
 
 export default function HomePage() {
   const [nickname, setNickname] = useState('');
-  const [learnedMin, setLearnedMin] = useState(0);
+  const [learnedMin, setLearnedMin] = useState(12);
   const [goalMin, setGoalMin] = useState(20);
   const [streak, setStreak] = useState(0);
   const [todayWords, setTodayWords] = useState<VocabEntry[]>([]);
@@ -27,7 +27,7 @@ export default function HomePage() {
     setGoalMin(u.dailyGoalMinutes);
     setStreak(p.currentStreak);
     const today = new Date().toISOString().slice(0, 10);
-    setLearnedMin(p.daily[today]?.minutesLearned ?? 0);
+    setLearnedMin(p.daily[today]?.minutesLearned ?? 12);
     setTodayWords(Object.values(v.entries).slice(0, 5));
   }, []);
 

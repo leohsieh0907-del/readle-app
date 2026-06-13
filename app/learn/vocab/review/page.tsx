@@ -10,7 +10,7 @@ import SoftButton from '@/components/ui/SoftButton';
 import { vocabRepo } from '@/lib/storage/repos';
 import { getDueWordIds, type SRSResponse } from '@/lib/srs/sm2';
 import { markReview } from '@/lib/storage/vocab-actions';
-import { speak, prefetchAll } from '@/lib/speech/tts';
+import { speak } from '@/lib/speech/tts';
 import type { VocabEntry } from '@/lib/readle-types';
 
 const responses: { id: SRSResponse; label: string; sub: string; color: string }[] = [
@@ -42,17 +42,6 @@ export default function ReviewPage() {
 
   const total = dueIds.length;
   const current: VocabEntry | undefined = entries[dueIds[idx]];
-
-  // 預先快取目前 + 下一張卡的音檔
-  useEffect(() => {
-    const cur = entries[dueIds[idx]];
-    const next = entries[dueIds[idx + 1]];
-    const texts: string[] = [];
-    for (const w of [cur, next]) {
-      if (w) { texts.push(w.word); if (w.examples[0]) texts.push(w.examples[0].en); }
-    }
-    if (texts.length) prefetchAll(texts);
-  }, [entries, dueIds, idx]);
 
   const handleAnswer = (resp: SRSResponse) => {
     if (!current) return;
@@ -143,18 +132,8 @@ export default function ReviewPage() {
                       {current.meaning}
                     </div>
                     {current.examples[0] && (
-                      <div className="mt-2 flex items-start gap-2">
-                        <span className="flex-1 text-sm leading-snug text-[var(--color-text-secondary)]">
-                          {current.examples[0].en}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => speak({ text: current.examples[0].en })}
-                          className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-[#5B5BF0]/10 text-[#5B5BF0] hover:bg-[#5B5BF0]/20"
-                          title="聽例句"
-                        >
-                          <Volume2 size={13} />
-                        </button>
+                      <div className="mt-2 text-sm leading-snug text-[var(--color-text-secondary)]">
+                        {current.examples[0].en}
                       </div>
                     )}
                   </motion.div>

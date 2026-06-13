@@ -26,9 +26,7 @@ export interface QuizQuestion {
 
 export interface VocabItem {
   word: string;
-  pos?: string;     // 詞性，如 n. / v. / adj. / adv.
   def: string;
-  usage?: string;   // 用法/搭配提示（繁中一句）
   example: string;
 }
 
@@ -42,7 +40,7 @@ export interface Article {
   title: string;
   level: CEFRLevel;
   category: Category;
-  coverImage?: string;
+  coverImage: string;
   readingMinutes: number;
   audioUrl: string;
   paragraphs: string[][];

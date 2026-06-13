@@ -8,7 +8,6 @@ import UserHeader from '@/components/me/UserHeader';
 import LearningHeatmap from '@/components/me/LearningHeatmap';
 import AchievementWall from '@/components/me/AchievementWall';
 import CategoryPie from '@/components/me/CategoryPie';
-import MyCollection from '@/components/me/MyCollection';
 import { userRepo, progressRepo, vocabRepo, historyRepo } from '@/lib/storage/repos';
 import { checkAndUnlock } from '@/lib/achievements/engine';
 import { quizRepo } from '@/lib/storage/quiz-actions';
@@ -68,9 +67,6 @@ export default function MePage() {
           color="from-[#FFB84D] to-[#FF6B6B]"
         />
       </div>
-
-      {/* 我的收藏 */}
-      <MyCollection />
 
       {/* 熱力圖 */}
       <GlassCard className="p-5">
